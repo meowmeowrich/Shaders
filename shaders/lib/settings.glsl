@@ -3,12 +3,12 @@
 
 // Visual Quality Presets (0-5)
 #if !defined VISUAL_QUALITY
-    #define VISUAL_QUALITY 4
+    #define VISUAL_QUALITY 5
 #endif
 
 // Performance Budgets
-#define SSGI_SAMPLES 8
-#define VOLUMETRIC_STEPS 64
+#define SSGI_SAMPLES 16
+#define VOLUMETRIC_STEPS 96
 #define REFLECTION_STEPS 32
 
 // Lighting Mode

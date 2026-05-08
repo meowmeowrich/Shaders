@@ -6,9 +6,11 @@
 in vec2 texCoord;
 
 uniform sampler2D colortex0;
+uniform sampler2D depthtex0;
 uniform float frameTimeCounter;
 
-vec3 aces(vec3 x) {
+// High-fidelity tonemapping and grading
+vec3 tonemap(vec3 x) {
     float a = 2.51;
     float b = 0.03;
     float c = 2.43;
@@ -21,29 +23,22 @@ void main() {
     vec3 color = texture2D(colortex0, texCoord).rgb;
 
     #ifdef BLOOM
-    // High-quality fake bloom using a small kernel
-    vec2 off = 2.0 / vec2(textureSize(colortex0, 0));
-    vec3 blur = vec3(0.0);
-    blur += texture2D(colortex0, texCoord + vec2(off.x, 0.0)).rgb;
-    blur += texture2D(colortex0, texCoord - vec2(off.x, 0.0)).rgb;
-    blur += texture2D(colortex0, texCoord + vec2(0.0, off.y)).rgb;
-    blur += texture2D(colortex0, texCoord - vec2(0.0, off.y)).rgb;
-    color += (blur / 4.0) * 0.3;
+    vec2 off = 1.5 / vec2(textureSize(colortex0, 0));
+    vec3 bloom = vec3(0.0);
+    bloom += texture2D(colortex0, texCoord + vec2(off.x, off.y)).rgb;
+    bloom += texture2D(colortex0, texCoord - vec2(off.x, off.y)).rgb;
+    bloom += texture2D(colortex0, texCoord + vec2(off.x, -off.y)).rgb;
+    bloom += texture2D(colortex0, texCoord - vec2(off.x, -off.y)).rgb;
+    color += (bloom / 4.0) * 0.25;
     #endif
 
-    #ifdef LENS_FLARE
-    vec2 center = vec2(0.5);
-    float d = length(texCoord - center);
-    color += vec3(0.1, 0.05, 0.02) * max(0.0, 1.0 - d * 2.0) * 0.1;
-    #endif
-
-    // Cinematic Grading
-    color = pow(color, vec3(CINEMATIC_CONTRAST));
-    color = aces(color);
+    color = tonemap(color * 1.1);
     color = pow(color, vec3(1.0/2.2));
 
-    // Slight blue shift in shadows
-    color.b += (1.0 - luma(color)) * 0.02;
+    // Vignette
+    vec2 v = texCoord * (1.0 - texCoord.yx);
+    float vignette = v.x*v.y * 15.0;
+    color *= pow(vignette, 0.1);
 
     gl_FragColor = vec4(color, 1.0);
 }

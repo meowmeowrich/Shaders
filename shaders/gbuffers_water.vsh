@@ -13,6 +13,7 @@ uniform mat4 modelViewMatrix;
 uniform mat4 projectionMatrix;
 uniform mat3 normalMatrix;
 uniform mat4 gbufferModelViewInverse;
+uniform vec3 cameraPosition;
 
 void main() {
     texCoord = (gl_TextureMatrix[0] * gl_MultiTexCoord0).xy;
@@ -22,6 +23,6 @@ void main() {
 
     vec4 viewPos4 = modelViewMatrix * gl_Vertex;
     viewPos = viewPos4.xyz;
-    worldPos = (gbufferModelViewInverse * viewPos4).xyz;
+    worldPos = (gbufferModelViewInverse * viewPos4).xyz + cameraPosition;
     gl_Position = projectionMatrix * viewPos4;
 }

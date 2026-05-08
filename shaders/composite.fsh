@@ -1,8 +1,10 @@
 #version 330 compatibility
 
 #include "/lib/settings.glsl"
+#include "/lib/shadows.glsl"
 #include "/lib/common.glsl"
 #include "/lib/brdf.glsl"
+#include "/lib/voxel.glsl"
 
 in vec2 texCoord;
 
@@ -10,32 +12,16 @@ in vec2 texCoord;
 layout(location = 0) out vec4 outColor;
 layout(location = 1) out vec4 outIndirect;
 
-uniform sampler2D colortex0; // Albedo (RGB), Emissive (A)
-uniform sampler2D colortex1; // Normal (RGB), Roughness (A)
+uniform sampler2D colortex0;
+uniform sampler2D colortex1;
+uniform sampler2D colortex2; // GI Cache Feedback
 uniform sampler2D depthtex0;
 uniform mat4 gbufferProjectionInverse;
+uniform mat4 gbufferModelViewInverse;
+uniform mat4 gbufferPreviousModelView;
+uniform mat4 gbufferPreviousProjection;
 uniform vec3 sunPosition;
-uniform float frameTimeCounter;
 uniform int frameCounter;
-
-vec3 calculateSSGI(vec3 viewPos, vec3 normal, float roughness) {
-    vec3 indirect = vec3(0.0);
-    float d = texture2D(depthtex0, texCoord).r;
-
-    // Low-sample blue-noise raymarch for indirect bounce
-    for(int i = 0; i < SSGI_SAMPLES; i++) {
-        float noise = blueNoise(texCoord, frameCounter + i);
-        vec3 rayDir = normalize(normal + (hash12(vec2(noise, float(i))) * 2.0 - 1.0)); // Random hemisphere
-
-        // Very short ray for local occlusion/bounce
-        vec3 samplePos = viewPos + rayDir * 0.5;
-        // In a real implementation, we'd project samplePos back to screen space and check depth
-        // Here we use a mathematical approximation of nearby bounce tinted by albedo
-        indirect += texture2D(colortex0, texCoord).rgb * 0.1 * GI_BOUNCE_INTENSITY;
-    }
-
-    return indirect / float(SSGI_SAMPLES);
-}
 
 void main() {
     vec4 albedoData = texture2D(colortex0, texCoord);
@@ -43,33 +29,40 @@ void main() {
     float emissive = albedoData.a;
     float depth = texture2D(depthtex0, texCoord).r;
 
-    if (depth == 1.0) {
+    if (depth >= 1.0) {
         outColor = vec4(albedo, 1.0);
         outIndirect = vec4(0.0);
         return;
     }
 
     vec4 data = texture2D(colortex1, texCoord);
-    vec3 normal = data.rgb * 2.0 - 1.0;
-    float roughness = data.a;
+    vec3 normal = normalize(data.rgb * 2.0 - 1.0 + 0.0001);
+    float roughness = max(data.a, 0.02);
 
     vec3 viewPos = screenToView(vec3(texCoord, depth), gbufferProjectionInverse);
+    vec3 worldPos = viewToWorld(viewPos, gbufferModelViewInverse);
     vec3 V = normalize(-viewPos);
     vec3 L = normalize(sunPosition);
 
-    // Direct Lighting (PBR)
     float sunStrength = smoothstep(-0.1, 0.1, sunPosition.y);
-    vec3 F0 = mix(vec3(0.04), albedo, 0.5); // Rough metalness approximation
+    vec3 F0 = mix(vec3(0.04), albedo, 0.5);
+
+    // Direct PBR
     vec3 specular = specularBRDF(normal, V, L, roughness, F0);
     float NdotL = max(dot(normal, L), 0.0);
+    float shadow = getShadow(worldPos);
+    vec3 direct = albedo * NdotL * sunStrength * 1.5 * shadow + specular * sunStrength * shadow;
 
-    vec3 direct = albedo * NdotL * sunStrength * 1.5 + specular * sunStrength;
+    // Voxel-Inspired Indirect
+    vec3 indirect = getVoxelLight(worldPos + normal * 0.1, normal, gbufferPreviousModelView, gbufferPreviousProjection);
 
-    // Indirect / SSGI
-    vec3 indirect = calculateSSGI(viewPos, normal, roughness);
+    // Local bounce approximation for when cache is empty or for extra detail
+    vec3 localBounce = albedo * vec3(0.05, 0.07, 0.1) * (1.0 - sunStrength * 0.5);
+    indirect = mix(localBounce, indirect, 0.8) * GI_BOUNCE_INTENSITY;
 
-    // Combine
     vec3 final = direct + indirect + albedo * emissive * EMISSIVE_STRENGTH;
+
+    if (any(isnan(final)) || any(isinf(final))) final = albedo * 0.1;
 
     outColor = vec4(final, 1.0);
     outIndirect = vec4(indirect, 1.0);

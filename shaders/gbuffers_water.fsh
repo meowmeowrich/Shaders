@@ -1,7 +1,7 @@
 #version 330 compatibility
 
 #include "/lib/settings.glsl"
-#include "/lib/common.glsl"
+#include "/lib/water.glsl"
 
 in vec2 texCoord;
 in vec2 lmCoord;
@@ -19,15 +19,13 @@ uniform sampler2D texture;
 uniform float frameTimeCounter;
 
 void main() {
-    // Procedural Waves Normal
-    vec3 animatedNormal = normal;
-    float wave = sin(worldPos.x * 2.0 + frameTimeCounter) * 0.1;
-    wave += cos(worldPos.z * 2.0 - frameTimeCounter * 1.5) * 0.1;
-    animatedNormal = normalize(normal + vec3(wave, 0.0, wave));
+    vec3 animatedNormal = getWaterNormal(worldPos, frameTimeCounter);
+    // Blend with original normal to preserve mesh shape
+    animatedNormal = normalize(mix(normal, animatedNormal, 0.5));
 
     vec4 albedo = texture2D(texture, texCoord) * color;
 
     outColor = albedo;
-    outData = vec4(animatedNormal * 0.5 + 0.5, 0.05); // Smooth water (low roughness)
-    outTranslucent = vec4(albedo.rgb, 0.5); // Fixed opacity for absorption logic
+    outData = vec4(animatedNormal * 0.5 + 0.5, 0.05);
+    outTranslucent = vec4(albedo.rgb, 0.5);
 }
