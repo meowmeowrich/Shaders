@@ -1,0 +1,32 @@
+# Main Categories
+screen.LIGHTING=Lighting & GI
+screen.ATMOSPHERE=Atmosphere & Volumetrics
+screen.WATER=Water & Reflections
+screen.POST=Post-Processing
+screen.PERFORMANCE=Performance & Scalability
+
+# Lighting
+option.LIGHTING_MODE=Lighting Mode
+option.LIGHTING_MODE.comment=Select the global illumination technique. Hybrid GI offers the best balance.
+option.GI_BOUNCE_INTENSITY=Bounce Intensity
+option.EMISSIVE_STRENGTH=Emissive Strength
+
+# Atmosphere
+option.VOLUMETRIC_FOG=Volumetric Fog
+option.VOLUMETRIC_FOG.comment=Enable froxel-based volumetric lighting.
+option.CLOUD_DENSITY=Cloud Density
+option.FOG_VARIATION=Localized Fog
+
+# Water
+option.SSR=Reflections
+option.SSR.comment=Screen-space reflections for water and wet surfaces.
+option.WATER_CAUSTICS=Water Caustics
+
+# Post
+option.TAA=Temporal Anti-Aliasing
+option.BLOOM=Bloom Strength
+option.COLOR_GRADING=Color Grading Preset
+
+# Performance
+option.VISUAL_QUALITY=Visual Quality Preset
+option.VISUAL_QUALITY.comment=Quickly scale the shader for your hardware.
