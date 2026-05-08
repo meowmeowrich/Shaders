@@ -12,7 +12,7 @@
 #define REFLECTION_STEPS 32
 
 // Lighting Mode
-#define LIGHTING_MODE 1
+#define LIGHTING_MODE 2
 
 // Feature Toggles
 #define VOLUMETRIC_FOG
@@ -25,7 +25,7 @@
 #define LENS_FLARE
 
 // Tuning
-#define GI_BOUNCE_INTENSITY 1.2
+#define GI_BOUNCE_INTENSITY 2.0
 #define EMISSIVE_STRENGTH 2.0
 #define CLOUD_DENSITY 0.6
 #define FOG_VARIATION 1.0

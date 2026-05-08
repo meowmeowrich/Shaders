@@ -7,22 +7,11 @@ screen.PERFORMANCE=Performance & Scalability
 
 # Lighting
 option.LIGHTING_MODE=Lighting Mode
-option.GI_BOUNCE_INTENSITY=Bounce Intensity
-option.EMISSIVE_STRENGTH=Emissive Strength
-
-# Atmosphere
-option.VOLUMETRIC_FOG=Volumetric Fog
-option.VOLUMETRIC_STEPS=Volumetric Steps
-option.FOG_VARIATION=Localized Fog
-
-# Water
-option.SSR=Reflections
-option.SSR_STEPS=SSR Quality
-
-# Post
-option.TAA=Temporal Anti-Aliasing
-option.BLOOM=Bloom Strength
-option.CINEMATIC_CONTRAST=Cinematic Contrast
+value.LIGHTING_MODE.0=Direct (Fastest)
+value.LIGHTING_MODE.1=Hybrid SSGI (Balanced)
+value.LIGHTING_MODE.2=Voxel Path Tracing (Next-Gen)
+option.GI_BOUNCE_INTENSITY=Dramatic Bounce
 
 # Performance
-option.VISUAL_QUALITY=Visual Quality Preset
+option.QUARTER_RES_GI=Performance GI (1/4 Res)
+option.QUARTER_RES_GI.comment=Use quarter-resolution for path tracing. Massive performance boost.
