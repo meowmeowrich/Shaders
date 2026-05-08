@@ -1,5 +1,6 @@
 #version 330 compatibility
 
+#include "/lib/common.glsl"
 #include "/lib/settings.glsl"
 #include "/lib/core/math.glsl"
 

@@ -1,18 +1,17 @@
 #version 330 compatibility
 
-#include "/lib/settings.glsl"
-#include "/lib/core/math.glsl"
-#include "/lib/core/noise.glsl"
+#include "/lib/common.glsl"
 
 in vec2 texCoord;
 
 /* DRAWBUFFERS:6 */
 layout(location = 0) out vec4 outPathTrace;
 
-uniform sampler2D colortex0;
-uniform sampler2D colortex1;
-uniform sampler2D colortex6; // Self-feedback for 2-frame persistence
+uniform sampler2D colortex0; // Albedo
+uniform sampler2D colortex1; // Normals
+uniform sampler2D colortex6; // Self-feedback
 uniform sampler2D depthtex0;
+uniform mat4 gbufferProjection;
 uniform mat4 gbufferProjectionInverse;
 uniform mat4 gbufferModelViewInverse;
 uniform int frameCounter;
@@ -38,24 +37,28 @@ void main() {
     vec3 indirect = vec3(0.0);
     float jitter = blueNoise(texCoord, frameCounter);
 
-    // Multi-sample Path Tracing (Quarter Res but high sample count per ray)
-    int samples = LIGHTING_MODE == 2 ? 2 : 1;
-    for(int s = 0; s < samples; s++) {
-        vec3 rayDir = normalize(normal + hash33(vec3(texCoord, jitter + float(s))) * 2.0 - 1.0);
-        float dist = length(viewPos);
-        int steps = dist < 20.0 ? 16 : 8;
+    // Improved Screen Space Path Tracing
+    vec3 rayDir = normalize(normal + hash33(vec3(texCoord, jitter)) * 2.0 - 1.0);
+    if (rayDir.z > 0.0) rayDir.z *= -1.0; // Force ray into the scene
 
-        vec3 p = viewPos + rayDir * 0.2;
-        for(int i = 0; i < steps; i++) {
-            // Screen Space Raymarch for hit
-            vec4 proj = gbufferProjectionInverse * vec4(p, 1.0); // Wait, should be projection
-            // Correcting projection logic
-            // ... (Simplified for performance but adding dramatic tint)
-            indirect += texture2D(colortex0, texCoord).rgb * 0.3 * GI_BOUNCE_INTENSITY;
-            p += rayDir * 2.0;
+    vec3 p = viewPos + rayDir * 0.1;
+    for(int i = 0; i < 12; i++) {
+        vec4 proj = gbufferProjection * vec4(p, 1.0);
+        vec3 screen = (proj.xyz / proj.w) * 0.5 + 0.5;
+
+        if (screen.x < 0.0 || screen.x > 1.0 || screen.y < 0.0 || screen.y > 1.0) break;
+
+        float d = texture2D(depthtex0, screen.xy).r;
+        vec3 hitPos = screenToView(vec3(screen.xy, d), gbufferProjectionInverse);
+
+        if (p.z < hitPos.z && length(p - hitPos) < 1.2) {
+            // Found a hit, sample color and accumulate
+            indirect = texture2D(colortex0, screen.xy).rgb * 0.5 * GI_BOUNCE_INTENSITY;
+            break;
         }
+        p += rayDir * 1.5;
     }
 
     vec3 prevGI = texture2D(colortex6, texCoord).rgb;
-    outPathTrace = vec4(mix(prevGI, indirect / float(samples), 0.5), 1.0);
+    outPathTrace = vec4(mix(prevGI, indirect, 0.2), 1.0);
 }

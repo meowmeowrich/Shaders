@@ -1,5 +1,6 @@
 #version 330 compatibility
 
+#include "/lib/common.glsl"
 #include "/lib/material.glsl"
 
 in vec2 texCoord;

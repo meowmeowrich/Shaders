@@ -14,7 +14,11 @@ vec3 getVolumetricLighting(vec3 viewDir, vec3 sunDir, float maxDist, int steps, 
         vec3 pWorld = (invView * vec4(pView, 1.0)).xyz;
 
         float shadow = getShadow(pWorld);
-        float density = exp(-pWorld.y * 0.05) * 0.02;
+
+        // Localized density using 3D noise (Simplex-like)
+        float density = noise3D(pWorld * 0.1 + vec3(0.0, 0.0, 0.0)) * 0.05;
+        density *= exp(-pWorld.y * 0.05); // Height falloff
+
         volumetric += vec3(1.0, 0.9, 0.8) * density * shadow;
     }
 
