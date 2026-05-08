@@ -1,15 +1,18 @@
 #if !defined SETTINGS_GLSL
 #define SETTINGS_GLSL
 
-// Visual Quality Presets (0: Potato, 1: Low, 2: Medium, 3: High, 4: Ultra, 5: Cinematic)
+// Visual Quality Presets (0-5)
 #if !defined VISUAL_QUALITY
-    #define VISUAL_QUALITY 3
+    #define VISUAL_QUALITY 4
 #endif
 
-// Lighting Mode (0: Fast, 1: Hybrid GI, 2: Full Path-Approx)
-#if !defined LIGHTING_MODE
-    #define LIGHTING_MODE 1
-#endif
+// Performance Budgets
+#define SSGI_SAMPLES 8
+#define VOLUMETRIC_STEPS 64
+#define REFLECTION_STEPS 32
+
+// Lighting Mode
+#define LIGHTING_MODE 1
 
 // Feature Toggles
 #define VOLUMETRIC_FOG
@@ -18,12 +21,15 @@
 #define BLOOM
 #define PROCEDURAL_PBR
 #define DYNAMIC_WIND
+#define MICRO_DETAIL
+#define LENS_FLARE
 
 // Tuning
-#define GI_BOUNCE_INTENSITY 1.0
-#define EMISSIVE_STRENGTH 1.5
-#define CLOUD_DENSITY 0.5
-#define FOG_VARIATION 0.8
-#define WATER_REFRACTION_STRENGTH 0.05
+#define GI_BOUNCE_INTENSITY 1.2
+#define EMISSIVE_STRENGTH 2.0
+#define CLOUD_DENSITY 0.6
+#define FOG_VARIATION 1.0
+#define WATER_REFRACTION_STRENGTH 0.08
+#define CINEMATIC_CONTRAST 1.1
 
 #endif

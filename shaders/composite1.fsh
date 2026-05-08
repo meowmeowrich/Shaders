@@ -12,31 +12,52 @@ layout(location = 1) out vec4 outVolumetric;
 uniform sampler2D colortex0;
 uniform sampler2D depthtex0;
 uniform mat4 gbufferProjectionInverse;
-uniform float frameTimeCounter;
 uniform vec3 sunPosition;
+uniform int frameCounter;
+
+// Henyey-Greenstein Phase Function for scattering
+float phase(float cosTheta, float g) {
+    float g2 = g * g;
+    return (1.0 - g2) / (4.0 * PI * pow(1.0 + g2 - 2.0 * g * cosTheta, 1.5));
+}
 
 void main() {
     vec3 color = texture2D(colortex0, texCoord).rgb;
     float depth = texture2D(depthtex0, texCoord).r;
 
-    vec3 sunDir = normalize(sunPosition);
-    vec3 fogColor = mix(vec3(0.1, 0.1, 0.2), vec3(0.5, 0.6, 0.7), smoothstep(-0.1, 0.2, sunDir.y));
+    vec3 viewPos = screenToView(vec3(texCoord, depth), gbufferProjectionInverse);
+    vec3 rayDir = normalize(viewPos);
+    float maxDist = length(viewPos);
 
-    float fogDensity = 0.0;
+    vec3 sunDir = normalize(sunPosition);
+    vec3 fogColor = mix(vec3(0.05, 0.05, 0.1), vec3(0.7, 0.8, 1.0), smoothstep(-0.1, 0.2, sunDir.y));
+
+    vec3 volumetric = vec3(0.0);
+    float transmittance = 1.0;
 
     #ifdef VOLUMETRIC_FOG
-    vec3 viewPos = screenToView(vec3(texCoord, depth), gbufferProjectionInverse);
-    float dist = length(viewPos);
+    // Temporal jitter for froxel-like effect
+    float jitter = blueNoise(texCoord, frameCounter);
+    int steps = VOLUMETRIC_STEPS;
+    float stepSize = maxDist / float(steps);
 
-    // Exponential fog
-    fogDensity = 1.0 - exp(-dist * 0.005 * FOG_VARIATION);
+    for(int i = 0; i < steps; i++) {
+        float d = (float(i) + jitter) * stepSize;
+        vec3 p = rayDir * d;
 
-    // Sun Glow in fog
-    vec3 viewDir = normalize(viewPos);
-    float sunGlow = pow(max(dot(viewDir, -sunDir), 0.0), 8.0) * 0.5;
-    fogColor += vec3(1.0, 0.8, 0.5) * sunGlow;
+        // Localized density based on world height (placeholder for froxel grid)
+        float density = exp(-p.y * 0.1) * 0.01 * FOG_VARIATION;
+
+        // In-scattering
+        float cosTheta = dot(rayDir, -sunDir);
+        float pSun = phase(cosTheta, 0.8);
+        volumetric += fogColor * density * pSun * transmittance;
+
+        transmittance *= exp(-density * stepSize);
+        if (transmittance < 0.01) break;
+    }
     #endif
 
-    outColor = vec4(mix(color, fogColor, fogDensity), 1.0);
-    outVolumetric = vec4(fogColor * fogDensity, 1.0);
+    outColor = vec4(color * transmittance + volumetric, 1.0);
+    outVolumetric = vec4(volumetric, 1.0);
 }

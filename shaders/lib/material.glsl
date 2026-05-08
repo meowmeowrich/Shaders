@@ -2,44 +2,46 @@
 #define MATERIAL_GLSL
 
 #include "/lib/settings.glsl"
+#include "/lib/common.glsl"
 
 struct Material {
-    float smoothness;
+    float roughness;
     float metalness;
     float emissive;
-    float f0; // Base reflectivity
+    float f0;
 };
 
-Material getMaterial(vec3 albedo, float blockId) {
+Material getMaterial(vec3 albedo, float blockId, vec2 coord) {
     Material m;
-    m.smoothness = 0.0;
+    m.roughness = 0.8;
     m.metalness = 0.0;
     m.emissive = 0.0;
     m.f0 = 0.04;
 
     #ifdef PROCEDURAL_PBR
-    // Rough Heuristics for modded compatibility
-    float l = dot(albedo, vec3(0.3, 0.59, 0.11));
+    float l = luma(albedo);
 
-    // Stone-like
-    if (l < 0.5) m.smoothness = 0.1;
+    // Heuristic: Darker things often rougher, but some are polished stone
+    if (l < 0.3) m.roughness = 0.9;
+    if (l > 0.8) m.roughness = 0.3;
 
-    // Metal-like (shiny/dark or very bright)
-    if (l > 0.8 || (l < 0.2 && albedo.g > albedo.r)) {
-        m.metalness = 0.5;
-        m.smoothness = 0.7;
+    // Metal detection: high saturation or specific luma levels
+    float sat = max(albedo.r, max(albedo.g, albedo.b)) - min(albedo.r, min(albedo.g, albedo.b));
+    if (sat > 0.5 && l > 0.6) {
+        m.metalness = 0.8;
+        m.roughness = 0.2;
     }
 
-    // Emissive detection (heuristic)
-    if (max(albedo.r, max(albedo.g, albedo.b)) > 0.95 && l > 0.8) {
+    // Emissive detection
+    if (max(albedo.r, max(albedo.g, albedo.b)) > 0.9 && l > 0.85) {
         m.emissive = 1.0;
     }
+    #endif
 
-    // Hardcoded vanilla-ish ranges if blockId is available
-    // Iris provides mc_Entity.x as block ID in some contexts
-    if (blockId > 10.0 && blockId < 20.0) { // Example: Ores
-        m.smoothness = 0.4;
-    }
+    #ifdef MICRO_DETAIL
+    // Add micro-roughness variations based on texture detail
+    float detail = IGN(coord * 1024.0);
+    m.roughness = clamp(m.roughness + (detail - 0.5) * 0.1, 0.0, 1.0);
     #endif
 
     return m;

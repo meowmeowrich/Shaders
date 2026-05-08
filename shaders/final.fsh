@@ -8,7 +8,6 @@ in vec2 texCoord;
 uniform sampler2D colortex0;
 uniform float frameTimeCounter;
 
-// Simple ACES Tonemapping
 vec3 aces(vec3 x) {
     float a = 2.51;
     float b = 0.03;
@@ -21,25 +20,30 @@ vec3 aces(vec3 x) {
 void main() {
     vec3 color = texture2D(colortex0, texCoord).rgb;
 
-    #ifdef TAA
-    // TAA would normally be implemented in a separate composite pass
-    // using reprojection. For simplicity in this final pass, we just ensure
-    // we have the right output.
-    #endif
-
     #ifdef BLOOM
-    // Fake Bloom: Sample downscaled versions or just a slight blur of bright areas
-    // Here we just do a tiny color boost to simulate glow
-    float l = luma(color);
-    if (l > 0.8) color += color * 0.2;
+    // High-quality fake bloom using a small kernel
+    vec2 off = 2.0 / vec2(textureSize(colortex0, 0));
+    vec3 blur = vec3(0.0);
+    blur += texture2D(colortex0, texCoord + vec2(off.x, 0.0)).rgb;
+    blur += texture2D(colortex0, texCoord - vec2(off.x, 0.0)).rgb;
+    blur += texture2D(colortex0, texCoord + vec2(0.0, off.y)).rgb;
+    blur += texture2D(colortex0, texCoord - vec2(0.0, off.y)).rgb;
+    color += (blur / 4.0) * 0.3;
     #endif
 
-    // Tone mapping and Gamma correction
+    #ifdef LENS_FLARE
+    vec2 center = vec2(0.5);
+    float d = length(texCoord - center);
+    color += vec3(0.1, 0.05, 0.02) * max(0.0, 1.0 - d * 2.0) * 0.1;
+    #endif
+
+    // Cinematic Grading
+    color = pow(color, vec3(CINEMATIC_CONTRAST));
     color = aces(color);
     color = pow(color, vec3(1.0/2.2));
 
-    // Artistic Color Grading
-    color *= vec3(1.05, 1.0, 0.95); // Slightly warm
+    // Slight blue shift in shadows
+    color.b += (1.0 - luma(color)) * 0.02;
 
     gl_FragColor = vec4(color, 1.0);
 }

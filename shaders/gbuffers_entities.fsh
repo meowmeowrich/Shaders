@@ -19,8 +19,8 @@ void main() {
     vec4 albedo = texture2D(texture, texCoord) * color * entityColor;
     if (albedo.a < 0.1) discard;
 
-    Material mat = getMaterial(albedo.rgb, 0.0);
+    Material mat = getMaterial(albedo.rgb, 0.0, texCoord);
 
-    outColor = albedo;
-    outData = vec4(normal * 0.5 + 0.5, mat.smoothness);
+    outColor = vec4(albedo.rgb, mat.emissive);
+    outData = vec4(normal * 0.5 + 0.5, mat.roughness);
 }
