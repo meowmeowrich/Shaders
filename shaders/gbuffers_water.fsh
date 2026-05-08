@@ -1,6 +1,7 @@
 #version 330 compatibility
 
 #include "/lib/settings.glsl"
+#include "/lib/surface/materials.glsl"
 #include "/lib/water.glsl"
 
 in vec2 texCoord;
@@ -20,7 +21,6 @@ uniform float frameTimeCounter;
 
 void main() {
     vec3 animatedNormal = getWaterNormal(worldPos, frameTimeCounter);
-    // Blend with original normal to preserve mesh shape
     animatedNormal = normalize(mix(normal, animatedNormal, 0.5));
 
     vec4 albedo = texture2D(texture, texCoord) * color;

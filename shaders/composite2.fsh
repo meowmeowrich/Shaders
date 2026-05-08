@@ -1,71 +1,38 @@
 #version 330 compatibility
 
 #include "/lib/settings.glsl"
-#include "/lib/common.glsl"
-#include "/lib/brdf.glsl"
+#include "/lib/core/math.glsl"
+#include "/lib/atmosphere/scattering.glsl"
+#include "/lib/atmosphere/volumetrics.glsl"
 
 in vec2 texCoord;
 
-/* DRAWBUFFERS:0 */
+/* DRAWBUFFERS:03 */
 layout(location = 0) out vec4 outColor;
+layout(location = 1) out vec4 outVolumetric;
 
 uniform sampler2D colortex0;
-uniform sampler2D colortex1;
 uniform sampler2D depthtex0;
-uniform sampler2D colortex4; // Translucency
 uniform mat4 gbufferProjectionInverse;
-uniform mat4 gbufferProjection;
+uniform mat4 gbufferModelViewInverse;
 uniform vec3 sunPosition;
-
-vec3 raytraceSSR(vec3 rO, vec3 rD, float jitter) {
-    vec3 step = rD * 0.5;
-    vec3 p = rO + step * jitter;
-
-    for(int i = 0; i < REFLECTION_STEPS; i++) {
-        vec4 project = gbufferProjection * vec4(p, 1.0);
-        vec3 screen = (project.xyz / project.w) * 0.5 + 0.5;
-
-        if (screen.x < 0.0 || screen.x > 1.0 || screen.y < 0.0 || screen.y > 1.0) break;
-
-        float d = texture2D(depthtex0, screen.xy).r;
-        vec3 hitPos = screenToView(vec3(screen.xy, d), gbufferProjectionInverse);
-
-        if (p.z < hitPos.z && length(p - hitPos) < 1.0) {
-            return texture2D(colortex0, screen.xy).rgb;
-        }
-        p += step;
-    }
-    return vec3(0.0);
-}
+uniform int frameCounter;
 
 void main() {
     vec3 color = texture2D(colortex0, texCoord).rgb;
     float depth = texture2D(depthtex0, texCoord).r;
-    vec4 data = texture2D(colortex1, texCoord);
-    vec3 normal = data.rgb * 2.0 - 1.0;
-    float roughness = data.a;
 
-    #ifdef SSR
-    if (depth < 1.0) {
-        vec3 viewPos = screenToView(vec3(texCoord, depth), gbufferProjectionInverse);
-        vec3 V = normalize(-viewPos);
-        vec3 R = reflect(-V, normal);
+    vec3 viewPos = screenToView(vec3(texCoord, depth), gbufferProjectionInverse);
+    float dist = length(viewPos);
+    vec3 viewDir = viewPos / dist;
+    vec3 sunDir = normalize(sunPosition);
 
-        if (R.z < 0.0) { // Ray points away from camera
-             vec3 reflection = raytraceSSR(viewPos, R, hash12(texCoord));
+    vec3 sunColor = vec3(1.0, 0.9, 0.8) * smoothstep(-0.1, 0.1, sunDir.y);
+    vec3 atmospheric = getAtmosphericLight(viewDir, sunDir, dist, sunColor);
 
-             // Beer-Lambert for water depth coloration
-             float transDepth = texture2D(colortex4, texCoord).a;
-             if (transDepth > 0.0) {
-                 vec3 absorb = exp(-vec3(0.5, 0.2, 0.1) * 2.0); // Murky blue-green
-                 color *= absorb;
-             }
+    float jitter = blueNoise(texCoord, frameCounter);
+    vec3 volumetric = getVolumetricLighting(viewDir, sunDir, min(dist, 100.0), VOLUMETRIC_STEPS / 4, jitter, gbufferModelViewInverse);
 
-             vec3 F = F_Schlick(max(dot(normal, V), 0.0), vec3(0.04));
-             color = mix(color, reflection, F * (1.0 - roughness));
-        }
-    }
-    #endif
-
-    outColor = vec4(color, 1.0);
+    outColor = vec4(color + atmospheric + volumetric * 3.0, 1.0);
+    outVolumetric = vec4(volumetric, 1.0);
 }

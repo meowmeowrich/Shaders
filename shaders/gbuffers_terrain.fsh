@@ -1,13 +1,14 @@
 #version 330 compatibility
 
 #include "/lib/settings.glsl"
-#include "/lib/material.glsl"
+#include "/lib/surface/materials.glsl"
 
 in vec2 texCoord;
 in vec2 lmCoord;
 in vec4 color;
 in vec3 normal;
 in vec3 viewPos;
+in vec3 worldPos;
 in float blockId;
 
 /* DRAWBUFFERS:01 */
@@ -20,8 +21,8 @@ void main() {
     vec4 albedo = texture2D(texture, texCoord) * color;
     if (albedo.a < 0.1) discard;
 
-    Material mat = getMaterial(albedo.rgb, blockId, texCoord);
+    MaterialProperties m = classifyMaterial(albedo.rgb, blockId, texCoord);
 
-    outColor = vec4(albedo.rgb, mat.emissive);
-    outData = vec4(normal * 0.5 + 0.5, mat.roughness);
+    outColor = vec4(albedo.rgb, m.emissive);
+    outData = vec4(normal * 0.5 + 0.5, m.roughness);
 }

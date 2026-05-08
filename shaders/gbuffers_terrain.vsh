@@ -1,34 +1,24 @@
 #version 330 compatibility
 
 #include "/lib/settings.glsl"
+#include "/lib/core/math.glsl"
 
 out vec2 texCoord;
 out vec2 lmCoord;
 out vec4 color;
 out vec3 normal;
 out vec3 viewPos;
+out vec3 worldPos;
 out float blockId;
 
 uniform mat4 modelViewMatrix;
 uniform mat4 projectionMatrix;
 uniform mat3 normalMatrix;
+uniform mat4 gbufferModelViewInverse;
 uniform vec3 cameraPosition;
 uniform float frameTimeCounter;
 
 attribute vec4 mc_Entity;
-
-#ifdef DYNAMIC_WIND
-vec3 applyWind(vec3 pos, float isFoliage) {
-    if (isFoliage < 0.5) return pos;
-
-    float t = frameTimeCounter;
-    float wind = sin(t * 1.5 + pos.x * 0.5) * 0.1;
-    wind += sin(t * 3.0 + pos.z * 0.8) * 0.05;
-
-    pos.x += wind * pos.y * 0.2;
-    return pos;
-}
-#endif
 
 void main() {
     texCoord = (gl_TextureMatrix[0] * gl_MultiTexCoord0).xy;
@@ -40,13 +30,17 @@ void main() {
     vec4 position = gl_Vertex;
 
     #ifdef DYNAMIC_WIND
-    // Crude foliage check via mc_Entity or gl_Color/gl_Normal heuristics if needed
-    // Typically, foliage might have specific mc_Entity IDs or we use blockId
-    bool isFoliage = (blockId > 10000.0); // Placeholder check
-    position.xyz = applyWind(position.xyz, isFoliage ? 1.0 : 0.0);
+    // Multi-frequency procedural wind
+    if (blockId > 10000.0) { // Simple foliage check
+        float t = frameTimeCounter;
+        float wind = sin(t * 1.5 + position.x * 0.5) * 0.1;
+        wind += sin(t * 3.0 + position.z * 0.8) * 0.05;
+        position.x += wind * position.y * 0.2;
+    }
     #endif
 
     vec4 viewPos4 = modelViewMatrix * position;
     viewPos = viewPos4.xyz;
+    worldPos = (gbufferModelViewInverse * viewPos4).xyz + cameraPosition;
     gl_Position = projectionMatrix * viewPos4;
 }
