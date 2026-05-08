@@ -6,6 +6,11 @@ const float TAU = 6.28318530717958647692;
 const float INV_PI = 0.31830988618;
 const float INV_TAU = 0.15915494309;
 
+// Lighting Helpers
+float luma(vec3 color) {
+    return dot(color, vec3(0.2126, 0.7152, 0.0722));
+}
+
 // Space Conversions
 vec3 screenToView(vec3 screenPos, mat4 invProj) {
     vec4 ndc = vec4(screenPos * 2.0 - 1.0, 1.0);

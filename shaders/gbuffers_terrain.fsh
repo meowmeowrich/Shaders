@@ -22,7 +22,7 @@ void main() {
     vec4 albedo = texture2D(texture, texCoord) * color;
     if (albedo.a < 0.1) discard;
 
-    MaterialProperties m = classifyMaterial(albedo.rgb, blockId, texCoord);
+    Material m = getMaterial(albedo.rgb, blockId, texCoord);
 
     outColor = vec4(albedo.rgb, m.emissive);
     outData = vec4(normal * 0.5 + 0.5, m.roughness);
